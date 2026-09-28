@@ -207,7 +207,6 @@ export function DashboardView() {
           icon={FolderKanban}
           label="Nombre de programmes"
           value={String(kpis.programs)}
-          hint={regionalScope ? 'Programmes régionaux suivis' : `Programmes suivis par la ${scopedEntities[0]?.shortName}`}
         />
         <StatCard
           icon={ListChecks}
@@ -219,13 +218,11 @@ export function DashboardView() {
           icon={Gauge}
           label="Taux de saisie"
           value={`${kpis.entryRate} %`}
-          hint={`${kpis.filled} valeurs saisies sur ${kpis.total} — ${MONTHS[month]}`}
         />
         <StatCard
           icon={TrendingUp}
           label="Taux de réalisation"
           value={`${kpis.achievement} %`}
-          hint="Cumul annuel réalisé / cible annuelle (plafonné à 150 %)"
         />
       </div>
 
@@ -468,16 +465,7 @@ export function DashboardView() {
 
       <Card>
         <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div className="flex flex-col gap-1.5">
-            <CardTitle>Tableau de synthèse — {MONTHS[month]}</CardTitle>
-            <CardDescription>
-              Valeurs du mois par entité.{' '}
-              {showConsolidated &&
-                'La colonne AREF Consolidé regroupe l’AREF et les 7 DP : somme pour les volumes et budgets, moyenne pour les pourcentages. '}
-              Couleur selon le cumul annuel rapporté à la cible annuelle : vert atteint, orange au-delà
-              de 50 %, rouge en dessous.
-            </CardDescription>
-          </div>
+          <CardTitle>Tableau de synthèse — {MONTHS[month]}</CardTitle>
           <ExportExcelButton
             getRows={buildSynthesisRows}
             fileName={exportFileName}
@@ -612,7 +600,7 @@ function StatCard({
   icon: React.ComponentType<{ className?: string }>
   label: string
   value: string
-  hint: string
+  hint?: string
 }) {
   return (
     <Card>
@@ -625,9 +613,11 @@ function StatCard({
           <Icon className="size-5" />
         </div>
       </CardHeader>
-      <CardContent>
-        <p className="text-xs text-muted-foreground">{hint}</p>
-      </CardContent>
+      {hint && (
+        <CardContent>
+          <p className="text-xs text-muted-foreground">{hint}</p>
+        </CardContent>
+      )}
     </Card>
   )
 }
