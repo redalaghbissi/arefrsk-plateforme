@@ -1,6 +1,6 @@
 'use client'
 
-import { ClipboardPen, FolderKanban, LayoutDashboard, Landmark, Users } from 'lucide-react'
+import { ClipboardPen, FolderKanban, LayoutDashboard, Landmark, TableProperties, Users } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 import type { View } from '@/lib/aref/types'
@@ -11,6 +11,7 @@ import { useApp, useCurrentUser } from './app-store'
 export const NAV: { view: View; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { view: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { view: 'saisie', label: 'Saisie Mensuelle', icon: ClipboardPen },
+  { view: 'synthese', label: 'Tableau de Synthèse', icon: TableProperties },
   { view: 'programmes', label: 'Gestion des Programmes', icon: FolderKanban },
   { view: 'utilisateurs', label: 'Gestion des Utilisateurs', icon: Users },
 ]

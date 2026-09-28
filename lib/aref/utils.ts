@@ -114,16 +114,21 @@ export const ROLE_LABEL: Record<RoleId, string> = {
   gest_aref: 'Gestionnaire Programme AREF',
   admin_dp: 'Admin DP',
   gest_dp: 'Gestionnaire Programme DP',
+  consultant: 'Consultant',
 }
 
 export const isArefRole = (roleId: RoleId) => roleId === 'admin_aref' || roleId === 'gest_aref'
 export const isAdminRole = (roleId: RoleId) => roleId === 'admin_aref' || roleId === 'admin_dp'
 export const isProgramManager = (roleId: RoleId) => roleId === 'gest_aref' || roleId === 'gest_dp'
+export const isConsultant = (roleId: RoleId) => roleId === 'consultant'
 
 export function canAccessView(user: User, view: View): boolean {
+  // Consultant: read-only access to Tableau de Synthèse only.
+  if (isConsultant(user.roleId)) return view === 'synthese'
   switch (view) {
     case 'dashboard':
     case 'saisie':
+    case 'synthese':
       return true
     case 'programmes':
       return isArefRole(user.roleId) || user.roleId === 'admin_dp'
@@ -145,9 +150,9 @@ export function canManageProgram(user: User, programId: string): boolean {
   return false
 }
 
-/** Entities whose data the user may see: AREF roles see everything, DP roles only their own DP. */
+/** Entities whose data the user may see: AREF roles and Consultants see everything, DP roles only their own DP. */
 export function visibleEntities<T extends { id: EntityId }>(user: User, entities: T[]): T[] {
-  if (isArefRole(user.roleId)) return entities
+  if (isArefRole(user.roleId) || isConsultant(user.roleId)) return entities
   return entities.filter((e) => e.id === user.entityId)
 }
 
@@ -167,7 +172,7 @@ export function canResetPassword(actor: User, target: User): boolean {
 export function canEditUser(actor: User, target: User): boolean {
   if (actor.roleId === 'admin_aref') return true
   if (actor.roleId === 'admin_dp')
-    return target.entityId === actor.entityId && target.roleId === 'gest_dp'
+    return target.entityId === actor.entityId && (target.roleId === 'gest_dp' || target.roleId === 'consultant')
   return false
 }
 

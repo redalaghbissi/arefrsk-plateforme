@@ -1,10 +1,8 @@
 'use client'
 
 import * as React from 'react'
-import { CheckCheck, Lock, ShieldCheck } from 'lucide-react'
-import { toast } from 'sonner'
+import { Lock, ShieldCheck } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty'
 import {
@@ -33,7 +31,6 @@ import { Textarea } from '@/components/ui/textarea'
 import { CURRENT_YEAR, ENTITIES, MONTHS } from '@/lib/aref/data'
 import type { Indicator, EntityId, Entry } from '@/lib/aref/types'
 import {
-  ENTRY_STATUS_LABEL,
   VALUE_TYPE_UNIT,
   canEditEntity,
   formatCompact,
@@ -43,22 +40,23 @@ import {
 import type { ExportRow } from '@/lib/aref/export'
 import { cn } from '@/lib/utils'
 import { useApp, useCurrentUser } from '../app-store'
-import { EntryStatusBadge, TypeBadge } from '../badges'
+import { TypeBadge } from '../badges'
 import { ExportExcelButton } from '../export-button'
 
 export function SaisieView() {
-  const { month, isPastMonth, programs, indicators, getEntry, updateEntry, markEntered } = useApp()
+  const { month, isPastMonth, programs, indicators, getEntry, updateEntry, entityFilter, programFilter, indicatorFilter } = useApp()
   const user = useCurrentUser()
 
   const editableEntities = ENTITIES.filter((e) => canEditEntity(user, e.id))
-  const [entityId, setEntityId] = React.useState<EntityId>(editableEntities[0].id)
-  const effectiveEntityId = editableEntities.some((e) => e.id === entityId)
-    ? entityId
-    : editableEntities[0].id
+  
+  // Bind directly to global state but enforce editable entities limitation
+  const effectiveEntityId = (editableEntities.some((e) => e.id === entityFilter)
+    ? entityFilter
+    : editableEntities[0].id) as EntityId
   const entity = ENTITIES.find((e) => e.id === effectiveEntityId)!
 
   const scopedPrograms = visiblePrograms(user, programs)
-  const [programFilter, setProgramFilter] = React.useState<string>('all')
+  
   const effectiveProgramFilter = scopedPrograms.some((p) => p.id === programFilter)
     ? programFilter
     : 'all'
@@ -79,34 +77,9 @@ export function SaisieView() {
         Programme: programs.find((p) => p.id === ind.programId)?.name ?? '',
         Indicateur: ind.name,
         Type: ind.valueType,
-        'Cible annuelle': ind.annualTarget,
         'Valeur réalisée': entry.value,
-        'Statut saisie': ENTRY_STATUS_LABEL[entry.status],
-        Remarques: entry.remark,
       }
     })
-
-  const counts = visibleIndicators.reduce(
-    (acc, ind) => {
-      acc[getEntry(ind.id, effectiveEntityId, month).status] += 1
-      return acc
-    },
-    { not_entered: 0, in_progress: 0, entered: 0 },
-  )
-
-  const handleValidate = () => {
-    const done = markEntered(
-      visibleIndicators.map((i) => i.id),
-      effectiveEntityId,
-    )
-    if (done === 0) {
-      toast.info('Aucune valeur en cours à valider')
-      return
-    }
-    toast.success(`${done} indicateur(s) validé(s)`, {
-      description: `${entity.name} — ${MONTHS[month]} ${CURRENT_YEAR}`,
-    })
-  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -116,55 +89,6 @@ export function SaisieView() {
           <p className="text-sm text-muted-foreground">
             Réalisations des indicateurs pour {MONTHS[month]} {CURRENT_YEAR}
           </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Select
-            value={effectiveProgramFilter}
-            onValueChange={(v) => v !== null && setProgramFilter(v)}
-            items={[
-              { value: 'all', label: 'Tous mes programmes' },
-              ...scopedPrograms.map((p) => ({ value: p.id, label: p.name })),
-            ]}
-          >
-            <SelectTrigger aria-label="Filtrer par programme" className="w-56 bg-card">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                <SelectItem value="all">Tous mes programmes</SelectItem>
-                {scopedPrograms.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>
-                    {p.name}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            </SelectContent>
-          </Select>
-
-          <Select
-            value={effectiveEntityId}
-            onValueChange={(v) => v !== null && setEntityId(v as EntityId)}
-            disabled={editableEntities.length === 1}
-            items={editableEntities.map((e) => ({ value: e.id, label: e.name }))}
-          >
-            <SelectTrigger aria-label="Entité saisie" className="w-52 bg-card">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                {editableEntities.map((e) => (
-                  <SelectItem key={e.id} value={e.id}>
-                    {e.name}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            </SelectContent>
-          </Select>
-
-          <Button onClick={handleValidate} disabled={readOnly || visibleIndicators.length === 0}>
-            <CheckCheck data-icon="inline-start" />
-            Valider la saisie
-          </Button>
         </div>
       </div>
 
@@ -209,21 +133,11 @@ export function SaisieView() {
                 facultatives.
               </CardDescription>
             </div>
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="flex flex-wrap items-center gap-2" aria-label="Récapitulatif des statuts">
-                <EntryStatusBadge status="not_entered" />
-                <span className="-ml-1 text-sm font-medium tabular-nums">{counts.not_entered}</span>
-                <EntryStatusBadge status="in_progress" />
-                <span className="-ml-1 text-sm font-medium tabular-nums">{counts.in_progress}</span>
-                <EntryStatusBadge status="entered" />
-                <span className="-ml-1 text-sm font-medium tabular-nums">{counts.entered}</span>
-              </div>
-              <ExportExcelButton
-                getRows={buildExportRows}
-                fileName={`saisie-${entity.shortName.toLowerCase().replace(/\s+/g, '-')}-${MONTHS[month].toLowerCase()}-${CURRENT_YEAR}`}
-                sheetName="Saisie"
-              />
-            </div>
+            <ExportExcelButton
+              getRows={buildExportRows}
+              fileName={`saisie-${entity.shortName.toLowerCase().replace(/\s+/g, '-')}-${MONTHS[month].toLowerCase()}-${CURRENT_YEAR}`}
+              sheetName="Saisie"
+            />
           </CardHeader>
           <CardContent className="px-0">
             <div className="overflow-x-auto">
@@ -233,7 +147,6 @@ export function SaisieView() {
                     <TableHead className="min-w-64 pl-6">Indicateur</TableHead>
                     <TableHead className="w-36 text-right whitespace-nowrap">Cible annuelle</TableHead>
                     <TableHead className="w-56">Valeur réalisée</TableHead>
-                    <TableHead className="w-32">Statut saisie</TableHead>
                     <TableHead className="min-w-72 pr-6">
                       Remarques <span className="font-normal text-muted-foreground">(optionnel)</span>
                     </TableHead>
@@ -247,7 +160,7 @@ export function SaisieView() {
                       <React.Fragment key={program.id}>
                         <TableRow className="bg-secondary/60 hover:bg-secondary/60">
                           <TableCell
-                            colSpan={5}
+                            colSpan={4}
                             className="pl-6 text-xs font-semibold tracking-wide text-secondary-foreground uppercase"
                           >
                             {program.name}
@@ -323,9 +236,6 @@ function EntryRow({
             </InputGroupAddon>
           )}
         </InputGroup>
-      </TableCell>
-      <TableCell>
-        <EntryStatusBadge status={entry.status} />
       </TableCell>
       <TableCell className="pr-6">
         <Textarea

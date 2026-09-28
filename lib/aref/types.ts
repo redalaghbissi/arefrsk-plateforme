@@ -45,7 +45,7 @@ export type Entry = {
 /** Key format: `${indicatorId}|${entityId}|${monthIndex}` */
 export type EntryMap = Record<string, Entry>
 
-export type RoleId = 'admin_aref' | 'gest_aref' | 'admin_dp' | 'gest_dp'
+export type RoleId = 'admin_aref' | 'gest_aref' | 'admin_dp' | 'gest_dp' | 'consultant'
 
 export type Role = {
   id: RoleId
@@ -64,6 +64,6 @@ export type User = {
   programIds: string[]
 }
 
-export type View = 'dashboard' | 'saisie' | 'programmes' | 'utilisateurs'
+export type View = 'dashboard' | 'saisie' | 'programmes' | 'utilisateurs' | 'synthese'
 
 export type Status = 'reached' | 'partial' | 'low' | 'empty'

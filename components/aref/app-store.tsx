@@ -53,6 +53,12 @@ type AppState = {
   addUser: (user: Omit<User, 'id'>) => void
   updateUser: (id: string, patch: Partial<User>) => void
   resetPassword: (id: string) => string
+  entityFilter: string
+  setEntityFilter: (v: string) => void
+  programFilter: string
+  setProgramFilter: (v: string) => void
+  indicatorFilter: string
+  setIndicatorFilter: (v: string) => void
 }
 
 const AppContext = React.createContext<AppState | null>(null)
@@ -67,6 +73,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [indicators, setIndicators] = React.useState<Indicator[]>(INDICATORS)
   const [entries, setEntries] = React.useState<EntryMap>(() => buildSeedEntries())
   const [users, setUsers] = React.useState<User[]>(USERS)
+  
+  const [entityFilter, setEntityFilter] = React.useState<string>('all')
+  const [programFilter, setProgramFilter] = React.useState<string>('all')
+  const [indicatorFilter, setIndicatorFilter] = React.useState<string>('all')
 
   const currentUser = users.find((u) => u.id === currentUserId) ?? null
 
@@ -80,7 +90,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         return { ok: false, error: 'Ce compte est désactivé. Contactez votre administrateur.' }
       }
       setCurrentUserId(user.id)
-      setViewState('dashboard')
+      // Consultants only have access to the synthesis page
+      setViewState(user.roleId === 'consultant' ? 'synthese' : 'dashboard')
       return { ok: true }
     },
     [users],
@@ -110,8 +121,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const key = entryKey(indicatorId, entityId, month)
       setEntries((prev) => {
         const merged: Entry = { ...(prev[key] ?? EMPTY_ENTRY), ...patch }
-        // Any edit moves the entry back to "en cours"; clearing the value resets it.
-        merged.status = merged.value === null ? 'not_entered' : 'in_progress'
+        // Auto-save: any edit with a value goes straight to "entered"; clearing resets it.
+        merged.status = merged.value === null ? 'not_entered' : 'entered'
         return { ...prev, [key]: merged }
       })
     },
@@ -261,6 +272,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     addUser,
     updateUser,
     resetPassword,
+    entityFilter,
+    setEntityFilter,
+    programFilter,
+    setProgramFilter,
+    indicatorFilter,
+    setIndicatorFilter,
   }
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>

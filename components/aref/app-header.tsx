@@ -1,7 +1,7 @@
 'use client'
 
 import * as React from 'react'
-import { CalendarDays, ChevronDown, KeyRound, Lock, LogOut, PanelLeft } from 'lucide-react'
+import { CalendarDays, ChevronDown, Filter, KeyRound, Lock, LogOut, PanelLeft } from 'lucide-react'
 import { toast } from 'sonner'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
@@ -20,13 +20,139 @@ import {
   SelectContent,
   SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
 import { CURRENT_YEAR, ENTITIES, MONTHS } from '@/lib/aref/data'
-import { ROLE_LABEL, initials } from '@/lib/aref/utils'
+import type { EntityId } from '@/lib/aref/types'
+import { ROLE_LABEL, canEditEntity, initials, isArefRole, visibleEntities, visiblePrograms } from '@/lib/aref/utils'
 import { useApp, useCurrentUser } from './app-store'
 import { ChangePasswordDialog } from './change-password-dialog'
+
+const ALL = 'all'
+
+function GlobalFilters() {
+  const {
+    view,
+    programs,
+    indicators,
+    entityFilter,
+    setEntityFilter,
+    programFilter,
+    setProgramFilter,
+    indicatorFilter,
+    setIndicatorFilter,
+  } = useApp()
+  const user = useCurrentUser()
+  const regionalScope = isArefRole(user.roleId)
+
+  if (!['dashboard', 'saisie', 'synthese'].includes(view)) return null
+
+  const isSaisie = view === 'saisie'
+  
+  const scopedPrograms = React.useMemo(() => visiblePrograms(user, programs), [user, programs])
+  const scopedIndicators = React.useMemo(
+    () => indicators.filter((i) => scopedPrograms.some((p) => p.id === i.programId)),
+    [indicators, scopedPrograms],
+  )
+  
+  const entityOptions = React.useMemo(() => {
+    if (isSaisie) return ENTITIES.filter((e) => canEditEntity(user, e.id))
+    return visibleEntities(user, ENTITIES)
+  }, [isSaisie, user])
+
+  const effectiveEntityFilter = entityOptions.some((e) => e.id === entityFilter) ? entityFilter : (isSaisie ? entityOptions[0].id : ALL)
+  const effectiveProgramFilter = scopedPrograms.some((p) => p.id === programFilter) ? programFilter : ALL
+  
+  const visibleProgramsForFilter = scopedPrograms.filter((p) => effectiveProgramFilter === ALL || p.id === effectiveProgramFilter)
+
+  return (
+    <div className="hidden lg:flex items-center gap-2 border-l pl-3 ml-1">
+      <Filter className="size-4 text-muted-foreground mr-1" aria-hidden="true" />
+      
+      {(!isSaisie ? regionalScope : entityOptions.length > 1) && (
+        <Select
+          value={effectiveEntityFilter}
+          onValueChange={(v) => v !== null && setEntityFilter(v)}
+          items={isSaisie ? entityOptions.map((e) => ({ value: e.id, label: e.name })) : [
+            { value: ALL, label: 'Toutes les entités' },
+            ...entityOptions.map((e) => ({ value: e.id, label: e.name })),
+          ]}
+        >
+          <SelectTrigger aria-label="Filtrer par entité" className="w-40 bg-card">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectGroup>
+              {!isSaisie && <SelectItem value={ALL}>Toutes les entités</SelectItem>}
+              {entityOptions.map((e) => (
+                <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>
+              ))}
+            </SelectGroup>
+          </SelectContent>
+        </Select>
+      )}
+
+      <Select
+        value={effectiveProgramFilter}
+        onValueChange={(v) => {
+          if (v === null) return
+          setProgramFilter(v)
+          setIndicatorFilter(ALL)
+        }}
+        items={[
+          { value: ALL, label: 'Tous les programmes' },
+          ...scopedPrograms.map((p) => ({ value: p.id, label: p.name })),
+        ]}
+      >
+        <SelectTrigger aria-label="Filtrer par programme" className="w-44 bg-card">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectGroup>
+            <SelectItem value={ALL}>Tous les programmes</SelectItem>
+            {scopedPrograms.map((p) => (
+              <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+            ))}
+          </SelectGroup>
+        </SelectContent>
+      </Select>
+
+      {!isSaisie && (
+        <Select
+          value={scopedIndicators.some(i => i.id === indicatorFilter) ? indicatorFilter : ALL}
+          onValueChange={(v) => v !== null && setIndicatorFilter(v)}
+          items={[
+            { value: ALL, label: 'Tous les indicateurs' },
+            ...scopedIndicators.map((i) => ({ value: i.id, label: i.name })),
+          ]}
+        >
+          <SelectTrigger aria-label="Filtrer par indicateur" className="w-44 bg-card">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectGroup>
+              <SelectItem value={ALL}>Tous les indicateurs</SelectItem>
+            </SelectGroup>
+            {visibleProgramsForFilter.map((program) => {
+              const rows = scopedIndicators.filter((i) => i.programId === program.id)
+              if (rows.length === 0) return null
+              return (
+                <SelectGroup key={program.id}>
+                  <SelectLabel>{program.name}</SelectLabel>
+                  {rows.map((ind) => (
+                    <SelectItem key={ind.id} value={ind.id}>{ind.name}</SelectItem>
+                  ))}
+                </SelectGroup>
+              )
+            })}
+          </SelectContent>
+        </Select>
+      )}
+    </div>
+  )
+}
 
 export function AppHeader() {
   const { month, setMonth, currentMonth, isPastMonth, logout, toggleSidebar, sidebarCollapsed } = useApp()
@@ -71,15 +197,16 @@ export function AppHeader() {
         </div>
 
         {isPastMonth ? (
-          <Badge variant="secondary" className="hidden sm:inline-flex">
+          <Badge variant="secondary" className="hidden sm:inline-flex shrink-0">
             <Lock data-icon="inline-start" aria-hidden="true" />
             Historique · lecture seule
           </Badge>
         ) : (
-          <Badge className="hidden bg-success text-success-foreground sm:inline-flex">
+          <Badge className="hidden bg-success text-success-foreground sm:inline-flex shrink-0">
             Mois en cours · saisie ouverte
           </Badge>
         )}
+        <GlobalFilters />
       </div>
 
       <DropdownMenu>

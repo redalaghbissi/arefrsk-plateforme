@@ -54,6 +54,7 @@ export const ROLES: Role[] = [
   { id: 'gest_aref', label: 'Gestionnaire Programme AREF' },
   { id: 'admin_dp', label: 'Admin DP' },
   { id: 'gest_dp', label: 'Gestionnaire Programme DP' },
+  { id: 'consultant', label: 'Consultant' },
 ]
 
 export const PROGRAMS: Program[] = [

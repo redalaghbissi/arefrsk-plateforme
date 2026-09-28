@@ -73,8 +73,8 @@ export function UtilisateursView() {
   const visibleUsers = isArefAdmin ? users : users.filter((u) => u.entityId === actor.entityId)
 
   const allowedRoles: RoleId[] = isArefAdmin
-    ? ['admin_aref', 'gest_aref', 'admin_dp', 'gest_dp']
-    : ['gest_dp']
+    ? ['admin_aref', 'gest_aref', 'admin_dp', 'gest_dp', 'consultant']
+    : ['gest_dp', 'consultant']
   const allowedEntities = isArefAdmin ? ENTITIES : [ownEntity]
 
   const [dialog, setDialog] = React.useState<{ mode: 'create' } | { mode: 'edit'; user: User } | null>(
@@ -380,8 +380,9 @@ function UserDialog({
   const [draft, setDraft] = React.useState<Draft>(initial)
 
   const roleRequiresAref = draft.roleId === 'admin_aref' || draft.roleId === 'gest_aref'
+  const roleRequiresDP = draft.roleId === 'admin_dp' || draft.roleId === 'gest_dp'
   const entityOptions: EntityId[] = allowedEntities.filter((id) =>
-    roleRequiresAref ? id === 'aref' : id !== 'aref',
+    roleRequiresAref ? id === 'aref' : roleRequiresDP ? id !== 'aref' : true,
   )
   // Programs are assigned after creation, from "Gestion des Programmes" or by editing the account.
   const showPrograms = mode === 'edit' && isProgramManager(draft.roleId)

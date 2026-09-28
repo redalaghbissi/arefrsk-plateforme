@@ -1,6 +1,6 @@
 'use client'
 
-import { ClipboardPen, FolderKanban, LayoutDashboard, Users } from 'lucide-react'
+import { ClipboardPen, FolderKanban, LayoutDashboard, TableProperties, Users } from 'lucide-react'
 import { Toaster } from '@/components/ui/sonner'
 import type { View } from '@/lib/aref/types'
 import { canAccessView } from '@/lib/aref/utils'
@@ -12,6 +12,7 @@ import { DashboardView } from './views/dashboard-view'
 import { LoginView } from './views/login-view'
 import { ProgrammesView } from './views/programmes-view'
 import { SaisieView } from './views/saisie-view'
+import { SyntheseView } from './views/synthese-view'
 import { UtilisateursView } from './views/utilisateurs-view'
 
 export function AppShell() {
@@ -52,6 +53,8 @@ function ActiveView() {
       return <DashboardView />
     case 'saisie':
       return <SaisieView />
+    case 'synthese':
+      return <SyntheseView />
     case 'programmes':
       return <ProgrammesView />
     case 'utilisateurs':
@@ -62,6 +65,7 @@ function ActiveView() {
 const MOBILE_NAV: { view: View; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { view: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { view: 'saisie', label: 'Saisie', icon: ClipboardPen },
+  { view: 'synthese', label: 'Synthèse', icon: TableProperties },
   { view: 'programmes', label: 'Programmes', icon: FolderKanban },
   { view: 'utilisateurs', label: 'Utilisateurs', icon: Users },
 ]
